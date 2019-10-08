@@ -3,6 +3,7 @@ import { Link, Node } from '../node';
 import Stats from '../Stats';
 import Dirent from '../Dirent';
 import { Volume, filenameToSteps, StatWatcher } from '../volume';
+import { constants } from '../constants';
 import hasBigInt from './hasBigInt';
 
 describe('volume', () => {
@@ -279,6 +280,13 @@ describe('volume', () => {
       it('Create new file at root (/test.txt)', () => {
         const fd = vol.openSync('/test.txt', 'w');
         expect(vol.root.getChild('test.txt')).toBeInstanceOf(Link);
+        expect(typeof fd).toBe('number');
+        expect(fd).toBeGreaterThan(0);
+      });
+      it('Create new directory at root (/)', () => {
+        vol.mkdirSync('/abc');
+        const fd = vol.openSync('/abc', constants.O_DIRECTORY);
+        // expect(vol.root.getChild('test.txt')).toBeInstanceOf(Link);
         expect(typeof fd).toBe('number');
         expect(fd).toBeGreaterThan(0);
       });

@@ -904,7 +904,14 @@ export class Volume {
     if (!realLink) throwError(ENOENT, 'open', link.getPath());
 
     const node = realLink.getNode();
-    if (node.isDirectory() && flagsNum !== FLAGS.r) throwError(EISDIR, 'open', link.getPath());
+    if (node.isDirectory()) {
+      const isRead = flagsNum === FLAGS.r;
+      const isDir = (flagsNum & constants.O_DIRECTORY) !== 0;
+      // console.log("openLink", isRead, isDir, flagsNum, constants.O_DIRECTORY);
+      if (!isRead && !isDir) {
+        throwError(EISDIR, 'open', link.getPath());
+      }
+    }
 
     // Check node permissions
     if (!(flagsNum & O_WRONLY)) {
@@ -939,7 +946,6 @@ export class Volume {
         link = this.createLink(dirLink, steps[steps.length - 1], false, modeNum);
       }
     }
-
     if (link) return this.openLink(link, flagsNum, resolveSymlinks);
     throwError(ENOENT, 'open', filename);
   }

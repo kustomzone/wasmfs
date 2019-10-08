@@ -5,6 +5,6 @@ export const create = (json: { [s: string]: string } = { '/foo': 'bar' }) => {
   return vol;
 };
 
-export const createFs = (json?) => {
+export const createFs = (json?: any) => {
   return createFsFromVolume(create(json));
 };
