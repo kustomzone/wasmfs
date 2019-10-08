@@ -1,122 +1,80 @@
-# memfs 2.0
+# `@wasmer/wasmfs`
 
-[![][npm-badge]][npm-url] [![][travis-badge]][travis-url]
+Isomorphic library to provide a sandboxed [node `fs`](https://nodejs.org/api/fs.html) implementation for Node and Browsers. 📂
 
-In-memory file-system with [Node's `fs` API](https://nodejs.org/api/fs.html).
+## Table of Contents
 
-- Node's `fs` API implemented, see [_API Status_](./docs/api-status.md)
-- Stores files in memory, in `Buffer`s
-- Throws sameish\* errors as Node.js
-- Has concept of _i-nodes_
-- Implements _hard links_
-- Implements _soft links_ (aka symlinks, symbolic links)
-- Permissions may\* be implemented in the future
-- Can be used in browser, see [`memfs-webpack`](https://github.com/streamich/memfs-webpack)
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Reference API](#reference-api)
+- [Contributing](#contributing)
 
-### Install
+## Features
 
-```shell
-npm install --save memfs
+This project forks [memfs](https://github.com/streamich/memfs) with custom fixes to work properly with the WebAssembly/WASI ecosystem.
+
+This package provides the following features:
+
+- In-memory file-system with Node's fs API using [memfs](https://github.com/streamich/memfs). 🗄️
+- Scaffolds common files used by the [Wasmer Runtime](https://github.com/wasmerio/wasmer) (e.g I/O Device files like `/dev/stdout`), to provide a similar experience to the Wasmer Runtime. 🔌
+- Provides convienence functions for grabbing Input / Output. ↔️
+- Allows overriding read/write of individual files to allow for custom implementations. 🛠️
+
+## Installation
+
+For installing `@wasmer/wasmfs`, just run this command in your shell:
+
+```bash
+npm install --save @wasmer/wasmfs
 ```
 
-## Usage
+## Quick Start
 
 ```js
-import { fs } from 'memfs';
+import { WasmFs } from '@wasmer/wasmfs';
 
-fs.writeFileSync('/hello.txt', 'World!');
-fs.readFileSync('/hello.txt', 'utf8'); // World!
+const wasmFs = new WasmFs();
+
+wasmFs.fs.writeFileSync('/dev/stdout', 'Quick Start!');
+
+wasmFs.getStdOut().then(response => {
+  console.log(response); // Would log: 'Quick Start!'
+});
 ```
 
-Create a file system from a plain JSON:
+For a larger end-to-end example, please see the [`@wasmer/wasm-terminal` package](https://github.com/wasmerio/wasmer-js/tree/master/packages/wasm-terminal).
+
+## Reference API
+
+`wasmFs.fs`
+
+[memfs](https://github.com/streamich/memfs)' [node fs](https://nodejs.org/api/fs.html) implementation object. See the [node fs documentation](https://nodejs.org/api/fs.html) for API usage.
+
+**NOTE:** The functions on this `fs` implementation can easily be overriden to provide custom functionality when your wasm module (running with [`@wasmer/wasi`](https://github.com/wasmerio/wasmer-js/tree/master/packages/wasi)) tries to do file system operations. For example:
 
 ```js
-import { fs, vol } from 'memfs';
+const wasmFs = new WasmFs();
 
-const json = {
-  './README.md': '1',
-  './src/index.js': '2',
-  './node_modules/debug/index.js': '3',
+const originalWriteFileSync = wasmFs.fs.writeFileSync;
+wasmFs.fs.writeFileSync = (path, text) => {
+  console.log('File written:', path);
+  originalWriteFileSync(path, text);
 };
-vol.fromJSON(json, '/app');
 
-fs.readFileSync('/app/README.md', 'utf8'); // 1
-vol.readFileSync('/app/src/index.js', 'utf8'); // 2
+wasmFs.fs.writeFileSync('/dev/stdout', 'Quick Start!');
+
+// Would log: "File written: /dev/stdout"
 ```
 
-Export to JSON:
+---
 
-```js
-vol.writeFileSync('/script.sh', 'sudo rm -rf *');
-vol.toJSON(); // {"/script.sh": "sudo rm -rf *"}
-```
+`wasmFs.getStdOut()`
 
-Use it for testing:
+Function that returns a promise that resolves a string. With the file contents of `/dev/stdout`.
 
-```js
-vol.writeFileSync('/foo', 'bar');
-expect(vol.toJSON()).toEqual({ '/foo': 'bar' });
-```
+## Contributing
 
-Create as many filesystem volumes as you need:
+This project follows the [all-contributors](https://github.com/kentcdodds/all-contributors) specification.
 
-```js
-import { Volume } from 'memfs';
-
-const vol = Volume.fromJSON({ '/foo': 'bar' });
-vol.readFileSync('/foo'); // bar
-
-const vol2 = Volume.fromJSON({ '/foo': 'bar 2' });
-vol2.readFileSync('/foo'); // bar 2
-```
-
-Use `memfs` together with [`unionfs`][unionfs] to create one filesystem
-from your in-memory volumes and the real disk filesystem:
-
-```js
-import * as fs from 'fs';
-import { ufs } from 'unionfs';
-
-ufs.use(fs).use(vol);
-
-ufs.readFileSync('/foo'); // bar
-```
-
-Use [`fs-monkey`][fs-monkey] to monkey-patch Node's `require` function:
-
-```js
-import { patchRequire } from 'fs-monkey';
-
-vol.writeFileSync('/index.js', 'console.log("hi world")');
-patchRequire(vol);
-require('/index'); // hi world
-```
-
-## Docs
-
-- [Reference](./docs/reference.md)
-- [Relative paths](./docs/relative-paths.md)
-- [API status](./docs/api-status.md)
-- [Dependencies](./docs/dependencies.md)
-
-## See also
-
-- [`spyfs`][spyfs] - spies on filesystem actions
-- [`unionfs`][unionfs] - creates a union of multiple filesystem volumes
-- [`linkfs`][linkfs] - redirects filesystem paths
-- [`fs-monkey`][fs-monkey] - monkey-patches Node's `fs` module and `require` function
-- [`libfs`](https://github.com/streamich/full-js/blob/master/src/lib/fs.ts) - real filesystem (that executes UNIX system calls) implemented in JavaScript
-
-[npm-url]: https://www.npmjs.com/package/memfs
-[npm-badge]: https://img.shields.io/npm/v/memfs.svg
-[travis-url]: https://travis-ci.org/streamich/memfs
-[travis-badge]: https://travis-ci.org/streamich/memfs.svg?branch=master
-[memfs]: https://github.com/streamich/memfs
-[unionfs]: https://github.com/streamich/unionfs
-[linkfs]: https://github.com/streamich/linkfs
-[spyfs]: https://github.com/streamich/spyfs
-[fs-monkey]: https://github.com/streamich/fs-monkey
-
-## License
-
-[Unlicense](./LICENSE) - public domain.
+Contributions of any kind are welcome! 👍
