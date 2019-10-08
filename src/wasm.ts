@@ -43,7 +43,7 @@ export class WasmFs {
   }
 
   async getStdOut() {
-    let promise = new Promise(resolve => {
+    const promise = new Promise(resolve => {
       resolve(this.fs.readFileSync('/dev/stdout', 'utf8'));
     });
     return promise;
