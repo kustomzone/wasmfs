@@ -19,7 +19,7 @@
     "prettier:diff": "prettier -l \"src/**/*.{ts,js}\"",
     "tslint": "tslint \"src/**/*.ts\" -t verbose",
     "precommit": "pretty-quick --staged",
-    "prepush": "yarn prettier:diff && yarn tslint"
+    "prepush": "npm run prettier:diff && npm run tslint"
   },
   "repository": {
     "type": "git",
